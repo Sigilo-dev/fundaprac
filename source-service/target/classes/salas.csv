@@ -1,0 +1,13 @@
+id,sede,nombre,tipo,capacidad,recursos
+SALA-101,Monterrico,Aula Colaborativa A,ESTUDIO,24,Pizarra|TV|Wifi
+SALA-102,Monterrico,Lab Arquitectura Cloud,LAB,32,PC|Docker|Proyector
+SALA-103,Monterrico,Sala Tesis 1,REUNION,10,TV|Pizarra
+SALA-201,San Miguel,Sala Cowork 2,ESTUDIO,18,Wifi|TV
+SALA-202,San Miguel,Lab Software 2,LAB,28,PC|Linux|Docker
+SALA-203,San Miguel,Sala Proyecto Integrador,REUNION,12,TV|Pizarra|Wifi
+SALA-301,Villa,Aula Inmersiva,ESTUDIO,30,VR|Wifi|TV
+SALA-302,Villa,Lab Datos,LAB,34,PC|Python|Docker
+SALA-303,Villa,Sala Mentoria,REUNION,8,TV|Wifi
+SALA-401,San Isidro,Auditorio Ejecutivo,AUDITORIO,80,Audio|Proyector|Wifi
+SALA-402,San Isidro,Lab Innovacion,LAB,25,PC|IoT|Docker
+SALA-403,San Isidro,Sala Sprint Review,REUNION,14,TV|Kanban|Wifi

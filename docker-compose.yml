@@ -1,0 +1,29 @@
+services:
+  campusspace-source:
+    build:
+      context: ./source-service
+    container_name: campusspace-source
+    environment:
+      PORT: "4570"
+    ports:
+      - "4570:4570"
+    networks:
+      - campusspace-net
+
+  campusspace-composer:
+    build:
+      context: ./composer-service
+    container_name: campusspace-composer
+    environment:
+      PORT: "4571"
+      SOURCE_SERVICE_URL: "http://campusspace-source:4570"
+    ports:
+      - "4571:4571"
+    depends_on:
+      - campusspace-source
+    networks:
+      - campusspace-net
+
+networks:
+  campusspace-net:
+    driver: bridge
