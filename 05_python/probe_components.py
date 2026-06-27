@@ -20,8 +20,10 @@ def main():
     checks = [
         ("Source health", f"{SOURCE_URL}/health"),
         ("Source reservas", f"{SOURCE_URL}/reservas?limit=5"),
+        ("Source correos Faker", f"{SOURCE_URL}/correos?limit=5"),
         ("Composer health", f"{COMPOSER_URL}/health"),
         ("Composer dashboard", f"{COMPOSER_URL}/dashboard"),
+        ("Composer correos compuestos", f"{COMPOSER_URL}/correos-compuestos"),
     ]
     failed = False
     for name, url in checks:

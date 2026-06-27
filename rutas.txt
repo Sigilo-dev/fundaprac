@@ -1,6 +1,0 @@
-https://maps.googleapis.com/maps/api/geocode/json
-https://calendar.google.com/calendar/api/v3
-https://identity.upc.edu.pe/oauth2/token
-https://api.minedu.gob.pe/catalogo/programas
-https://status.zoom.us/api/v2/status.json
-https://api.open-meteo.com/v1/forecast

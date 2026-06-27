@@ -2,6 +2,7 @@ package edu.upc.campusspace.source;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import net.datafaker.Faker;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,16 +18,21 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class SourceServer {
     private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final List<Room> ROOMS = loadRooms();
     private static final List<Reservation> RESERVATIONS = seedReservations();
+    private static final List<Correo> CORREOS = seedCorreos();
 
     public static void main(String[] args) throws Exception {
         int port = readPort(4570);
@@ -39,10 +45,11 @@ public class SourceServer {
         server.createContext("/reservas", SourceServer::handleReservations);
         server.createContext("/html", SourceServer::handleHtml);
         server.createContext("/rutas", SourceServer::handleRoutes);
+        server.createContext("/correos", SourceServer::handleCorreos);
         server.setExecutor(Executors.newFixedThreadPool(8));
         server.start();
         System.out.printf("CampusSpace Source Service iniciado en puerto %d%n", port);
-        System.out.println("Endpoints: /health, /salas, /reservas, /html, /rutas");
+        System.out.println("Endpoints: /health, /salas, /reservas, /html, /rutas, /correos");
     }
 
     private static void handleRooms(HttpExchange exchange) throws IOException {
@@ -110,6 +117,28 @@ public class SourceServer {
         sendJson(exchange, 200, json.toString());
     }
 
+    private static void handleCorreos(HttpExchange exchange) throws IOException {
+        logRequest(exchange);
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            sendJson(exchange, 405, "{\"error\":\"Metodo no permitido\"}");
+            return;
+        }
+
+        Map<String, String> query = parseQuery(exchange.getRequestURI().getRawQuery());
+        int limite = parseInt(query.get("limit"), CORREOS.size());
+        String format = query.getOrDefault("format", "json");
+
+        List<Correo> filtered = CORREOS.stream()
+                .limit(Math.max(1, Math.min(limite, CORREOS.size())))
+                .toList();
+
+        if ("html".equalsIgnoreCase(format)) {
+            sendHtml(exchange, 200, correosHtml(filtered));
+        } else {
+            sendJson(exchange, 200, correosJson(filtered));
+        }
+    }
+
 
     private static void logRequest(HttpExchange exchange) {
         System.out.printf("[%s] %s %s%n", LocalDateTime.now(), exchange.getRequestMethod(), exchange.getRequestURI());
@@ -117,7 +146,8 @@ public class SourceServer {
 
     private static String healthJson(int port) {
         return "{\"service\":\"campusspace-source\",\"status\":\"UP\",\"port\":" + port +
-                ",\"rooms\":" + ROOMS.size() + ",\"reservations\":" + RESERVATIONS.size() + "}";
+                ",\"rooms\":" + ROOMS.size() + ",\"reservations\":" + RESERVATIONS.size() +
+                ",\"correos\":" + CORREOS.size() + "}";
     }
 
     private static String roomsJson(List<Room> rooms) {
@@ -238,6 +268,102 @@ public class SourceServer {
         );
     }
 
+    private static List<Correo> seedCorreos() {
+        Faker faker = new Faker(new Locale("es"));
+        List<Correo> correos = new ArrayList<>();
+
+        Set<String> nombresUsados = new HashSet<>();
+        Set<String> emailsUsados = new HashSet<>();
+        Set<String> empresasUsadas = new HashSet<>();
+
+        for (int i = 1; i <= 100; i++) {
+            String nombre = uniqueValue(
+                    nombresUsados,
+                    () -> faker.name().fullName(),
+                    "Persona Campus " + i
+            );
+
+            String email = uniqueValue(
+                    emailsUsados,
+                    () -> faker.internet().emailAddress(),
+                    "usuario" + i + "@campusspace.test"
+            );
+
+            String empresa = uniqueValue(
+                    empresasUsadas,
+                    () -> faker.company().name(),
+                    "Empresa Campus " + i
+            );
+
+            correos.add(new Correo(
+                    String.format("COR-%04d", i),
+                    nombre,
+                    email,
+                    empresa
+            ));
+        }
+
+        return correos;
+    }
+
+    private static String uniqueValue(Set<String> used, Supplier<String> generator, String fallback) {
+        for (int attempt = 0; attempt < 20; attempt++) {
+            String value = generator.get();
+            if (value != null && !value.isBlank() && used.add(value)) {
+                return value;
+            }
+        }
+        used.add(fallback);
+        return fallback;
+    }
+
+    private static String correosJson(List<Correo> correos) {
+        StringBuilder json = new StringBuilder();
+        json.append("{\"total\":").append(correos.size()).append(",\"items\":[");
+        for (int i = 0; i < correos.size(); i++) {
+            if (i > 0) json.append(',');
+            Correo correo = correos.get(i);
+            json.append("{\"id\":\"").append(escape(correo.id)).append("\",")
+                    .append("\"nombre\":\"").append(escape(correo.nombre)).append("\",")
+                    .append("\"correo\":\"").append(escape(correo.email)).append("\",")
+                    .append("\"empresa\":\"").append(escape(correo.empresa)).append("\"}");
+        }
+        json.append("]}");
+        return json.toString();
+    }
+
+    private static String correosHtml(List<Correo> correos) {
+        StringBuilder html = new StringBuilder();
+        html.append("<!DOCTYPE html><html lang='es'><head>")
+                .append("<meta charset='UTF-8'>")
+                .append("<title>CampusSpace - Correos Faker</title>")
+                .append("<style>")
+                .append("body{font-family:Arial,sans-serif;margin:24px;color:#1f2937;}")
+                .append("table{border-collapse:collapse;width:100%;}")
+                .append("th,td{border:1px solid #d1d5db;padding:8px;text-align:left;}")
+                .append("th{background:#f3f4f6;}")
+                .append(".badge{display:inline-block;background:#e0f2fe;padding:6px 10px;border-radius:10px;margin-bottom:12px;}")
+                .append("</style>")
+                .append("</head><body>")
+                .append("<h1>Correos generados con Faker</h1>")
+                .append("<p class='badge'>Total mostrado: ").append(correos.size()).append("</p>")
+                .append("<table><thead><tr>")
+                .append("<th>ID</th><th>Nombre</th><th>Correo</th><th>Empresa</th>")
+                .append("</tr></thead><tbody>");
+
+        for (Correo correo : correos) {
+            html.append("<tr>")
+                    .append("<td>").append(escapeHtml(correo.id)).append("</td>")
+                    .append("<td>").append(escapeHtml(correo.nombre)).append("</td>")
+                    .append("<td>").append(escapeHtml(correo.email)).append("</td>")
+                    .append("<td>").append(escapeHtml(correo.empresa)).append("</td>")
+                    .append("</tr>");
+        }
+
+        html.append("</tbody></table></body></html>");
+        return html.toString();
+    }
+
     private static String readResource(String name) throws IOException {
         try (InputStream inputStream = SourceServer.class.getClassLoader().getResourceAsStream(name)) {
             if (inputStream == null) return "";
@@ -300,6 +426,20 @@ public class SourceServer {
     private static String escapeHtml(String value) {
         if (value == null) return "";
         return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
+    private static class Correo {
+        final String id;
+        final String nombre;
+        final String email;
+        final String empresa;
+
+        Correo(String id, String nombre, String email, String empresa) {
+            this.id = id;
+            this.nombre = nombre;
+            this.email = email;
+            this.empresa = empresa;
+        }
     }
 
     private static class Room {

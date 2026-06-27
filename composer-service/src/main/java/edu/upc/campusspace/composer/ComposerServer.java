@@ -41,10 +41,11 @@ public class ComposerServer {
         server.createContext("/reservas-compuestas", ComposerServer::handleCompositeReservations);
         server.createContext("/dashboard", ComposerServer::handleDashboard);
         server.createContext("/dashboard-html", ComposerServer::handleDashboardHtml);
+        server.createContext("/correos-compuestos", ComposerServer::handleCompositeCorreos);
         server.setExecutor(Executors.newFixedThreadPool(8));
         server.start();
         System.out.printf("CampusSpace Composer Service iniciado en puerto %d%n", port);
-        System.out.println("Endpoints: /health, /debug-config, /reservas-compuestas, /dashboard, /dashboard-html");
+        System.out.println("Endpoints: /health, /debug-config, /reservas-compuestas, /dashboard, /dashboard-html, /correos-compuestos");
         System.out.println("SOURCE_SERVICE_URL=" + sourceBaseUrl());
     }
 
@@ -67,6 +68,26 @@ public class ComposerServer {
             sendJson(exchange, 200, json);
         } catch (Exception exception) {
             sendJson(exchange, 503, errorJson("No se pudo componer la informacion", exception));
+        }
+    }
+
+    private static void handleCompositeCorreos(HttpExchange exchange) throws IOException {
+        logRequest(exchange);
+        try {
+            String correos = fetch(sourceBaseUrl() + "/correos");
+            String routes = fetch(sourceBaseUrl() + "/rutas");
+
+            String json = "{"
+                    + "\"composer\":\"campusspace-composer\","
+                    + "\"sourceService\":\"" + escape(sourceBaseUrl()) + "\","
+                    + "\"generatedView\":\"CORREOS_COMPUESTOS\","
+                    + "\"sourceEndpoint\":\"/correos\","
+                    + "\"correos\":" + correos + ","
+                    + "\"externalRoutes\":" + routes
+                    + "}";
+            sendJson(exchange, 200, json);
+        } catch (Exception exception) {
+            sendJson(exchange, 503, errorJson("No se pudo componer la informacion de correos", exception));
         }
     }
 
